@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>D3 World Map</title>
+    <style>
+        path {
+            stroke: white;
+            stroke-width: 0.5px;
+        }
+        p{
+            font-weight: bold;
+            font-style: italic;
+            font-size: 22px;
+            margin-bottom:2px;
+            /*margin-left:75px;*/
+        }
+        h2{
+            margin-top:0;
+            margin-bottom:5px;
+            text-align:center;
+            font-size:16px;
+            font-style:italic;
+        }
+        button{
+            color:white;
+            background-color: darkred;
+            width: 60px;
+            height: 30px;
+            margin-right:7px;
+        }
+        .Buttons{
+            position:absolute;
+            /*top:270px;*/
+            right:2%;
+
+        }
+    </style>
+    <script src="http://d3js.org/d3.v3.min.js"></script>
+
+    <script src="http://d3js.org/topojson.v0.min.js"></script>
+</head>
+<body>
+<script src="http://d3js.org/d3.v4.min.js"></script>
+<script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+<script src="https://d3js.org/d3-geo-projection.v2.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3-legend/2.24.0/d3-legend.js"></script>
+
+<div class="Buttons">
+    <p>Suicide Rates For Both Sexes</p>
+    <h2>per 100 000 population</h2>
+    <a href="both_sexes_2015.html"><button type="button">2015</button></a>
+    <a href="both_sexes_2010.html"><button type="button">2010</button></a>
+    <a href="both_sexes_2005.html"><button type="button">2005</button></a>
+    <a href="both_sexes_2000.html"><button type="button">2000</button></a>
+</div>
+
+<script>
+
+var width = 1200;
+var height = 600;
+
+var projection = d3.geoNaturalEarth()
+    .scale(width / 2 / Math.PI)
+    .translate([width / 2, height / 2])
+
+var svg = d3.select("body").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+var path = d3.geoPath()
+    .projection(projection);
+
+var g = svg.append("g")
+
+// Data and color scale
+var data2 = d3.map();
+var colorScheme = d3.schemeReds[5];
+colorScheme.unshift("#eee");
+var colorScale = d3.scaleThreshold()
+    .domain([1, 6, 11, 26, 101])
+    .range(colorScheme);
+
+// Legend
+var g = svg.append("g")
+    .attr("class", "legendThreshold")
+    .attr("transform", "translate(20,20)");
+g.append("text")
+    .attr("class", "caption")
+    .attr("x", 0)
+    .attr("y", -6)
+    .text("Age-standardized suicide rates");
+var labels = ['no data','not applicable', '0-4.9', '5-9.9', '10-14.9', '>15'];
+var legend = d3.legendColor()
+    .labels(function (d) { return labels[d.i]; })
+    .shapePadding(4)
+    .scale(colorScale);
+svg.select(".legendThreshold")
+    .call(legend);
+
+// Load external data and boot
+d3.queue()
+    .defer(d3.json, "world.json")
+    .defer(d3.csv, "both_sexes_2015_data.csv", function(d) { data2.set(d.country, +d.rate); })
+    .await(ready);
+
+function ready(error, topology) {
+    if (error) throw error;
+
+    // Draw the map
+    g.selectAll("path")
+        .data(topojson.object(topology, topology.objects.countries).geometries)
+        .enter()
+        .append("path")
+        .attr("fill", function (d) {
+            // Pull data for this country
+            d.rate = data2.get(d.properties.name) || 0;
+            console.log(data2.get(d.properties.name) || 0, d.properties.name)
+            // Set the color
+            return colorScale(d.rate);
+        })
+        .attr("d", path);
+}
+
+</script>
+</body>
+</html>
